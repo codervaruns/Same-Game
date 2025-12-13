@@ -39,5 +39,5 @@ output/
 Thumbs.db
 desktop.ini
 
-./github/
-./github/copilot-instructions.md
+.github/
+.github/copilot-instructions.md
