@@ -1,0 +1,43 @@
+# Compiled executables
+*.exe
+*.out
+*.app
+
+# Build directories
+build/
+output/
+
+# Object files
+*.o
+*.obj
+
+# Debug files
+*.dSYM/
+*.su
+*.idb
+*.pdb
+
+# VS Code directories
+.vscode/
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/c_cpp_properties.json
+
+# MinGW/GCC
+*.dll
+*.so
+*.dylib
+
+# Backup files
+*~
+*.bak
+*.swp
+
+# OS files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+./github/
+./github/copilot-instructions.md
