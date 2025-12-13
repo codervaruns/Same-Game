@@ -90,6 +90,64 @@ int main() {
                     }
                 }
       }//while
+
+      // grid state before gravity
+      cout << "Grid before gravity:\n";
+      for(int i=0;i<m;i++){
+          for(int j=0;j<n;j++){
+              if(totVis[i][j]) cout << grid[i][j] << " ";
+              else cout << ". ";
+          }
+          cout << endl;
+      }
+      cout << endl;
+
+      //grid gravity logic
+      for(int j=0;j<n;j++){
+        int pos = m-1;
+        for(int i=m-1;i>=0;i--){
+            if(totVis[i][j]==true){
+                if(i!=pos){
+                    grid[pos][j]=grid[i][j];
+                    totVis[pos][j]=true;
+                    totVis[i][j]=false;
+                }
+                pos--;
+            }
+        }
+    }
+
+    int col=0;
+    for(int j=0;j<n;j++){
+        bool hasTiles=false;
+        for(int i=0;i<m;i++){
+            if(totVis[i][j]==true){
+                hasTiles=true;
+                break;
+            }
+        }
+        if(hasTiles){
+            if(j!=col){
+                for(int i=0;i<m;i++){
+                    grid[i][col]=grid[i][j];
+                    totVis[i][col]=totVis[i][j];
+                    totVis[i][j]=false;
+                }
+            }
+            col++;
+        }
+    }
+
+    // grid state after gravity
+      cout << "Grid after gravity:\n";
+      for(int i=0;i<m;i++){
+          for(int j=0;j<n;j++){
+              if(totVis[i][j]) cout << grid[i][j] << " ";
+              else cout << ". ";
+          }
+          cout << endl;
+      }
+      cout << endl;
       
       if(colorVMain.empty()){
           cnt=false;
