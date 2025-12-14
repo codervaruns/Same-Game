@@ -1,0 +1,19 @@
+@echo off
+REM Build script for Same Game - Windows Batch
+
+echo Building Same Game...
+C:\msys64\mingw64\bin\g++.exe -std=c++17 -IC:\msys64\mingw64\include -I. SameGame.cpp main.cpp -o SameGame.exe -LC:\msys64\mingw64\lib -lmingw32 -lSDL2main -lSDL2 -lSDL2_ttf
+
+if %ERRORLEVEL% EQU 0 (
+    echo Build successful!
+    echo Run SameGame.exe to play the game.
+    echo.
+    echo Controls:
+    echo - Mouse Hover: Highlight clusters
+    echo - Left Click: Remove cluster  
+    echo - R Key: Restart game
+    echo - ESC Key: Quit
+) else (
+    echo Build failed!
+    exit /b 1
+)
