@@ -1,4 +1,5 @@
 #include "SameGame.h"
+#include <algorithm>
 
 SameGame::SameGame(const vector<vector<char>>& initialGrid) {
     reset(initialGrid);
@@ -11,6 +12,9 @@ void SameGame::reset(const vector<vector<char>>& initialGrid) {
     active = vector<vector<bool>>(rows, vector<bool>(cols, true));
     score = 0;
     moves = 0;
+    isUserTurn = true;  // User goes first
+    userScore = 0;
+    computerScore = 0;
 }
 
 char SameGame::getTile(int row, int col) const {
@@ -91,8 +95,20 @@ bool SameGame::removeCluster(int row, int col) {
     
     // Calculate score: (size - 2)^2
     int clusterSize = cluster.size();
-    score += (clusterSize - 2) * (clusterSize - 2);
+    int points = (clusterSize - 2) * (clusterSize - 2);
+    score += points;
+    
+    // Add to appropriate player's score
+    if (isUserTurn) {
+        userScore += points;
+    } else {
+        computerScore += points;
+    }
+    
     moves++;
+    
+    // Switch turns after successful move
+    switchTurn();
     
     // Apply gravity
     applyGravity();
@@ -177,4 +193,24 @@ vector<tuple<int, char, int, int>> SameGame::getAllClusters() {
     }
     
     return clusters;
+}
+
+pair<int, int> SameGame::getBestMove() {
+    // Get all available clusters
+    vector<tuple<int, char, int, int>> clusters = getAllClusters();
+    
+    if (clusters.empty()) {
+        return {-1, -1};  // No moves available
+    }
+    
+    // Sort by size (descending) - greedy strategy picks largest cluster
+    sort(clusters.begin(), clusters.end(), 
+         [](const tuple<int, char, int, int>& a, const tuple<int, char, int, int>& b) {
+             return get<0>(a) > get<0>(b);
+         });
+    
+    // Return the position of the largest cluster
+    int row = get<2>(clusters[0]);
+    int col = get<3>(clusters[0]);
+    return {row, col};
 }

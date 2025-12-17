@@ -7,11 +7,11 @@
 
 using namespace std;
 
-const int WINDOW_WIDTH = 1200;
-const int WINDOW_HEIGHT = 1000;
-const int TILE_SIZE = 150;
-const int GRID_OFFSET_X = 150;
-const int GRID_OFFSET_Y = 150;
+const int WINDOW_WIDTH = 600;
+const int WINDOW_HEIGHT = 550;
+const int TILE_SIZE = 80;
+const int GRID_OFFSET_X = 80;
+const int GRID_OFFSET_Y = 140;
 const int UI_HEIGHT = 120;
 
 class SameGameGUI {
@@ -29,6 +29,10 @@ private:
     // Game state
     bool gameOver;
     bool gameWon;
+    
+    // Computer AI timing
+    Uint32 lastComputerMoveTime;
+    const Uint32 COMPUTER_MOVE_DELAY = 1000;  // 1 second delay for computer move
     
     // Colors
     SDL_Color getColorForTile(char tile) {
@@ -97,13 +101,22 @@ private:
     }
     
     void drawUI() {
-        // Draw score
-        string scoreText = "Score: " + to_string(game->getScore());
-        renderText(scoreText, 20, 20, {255, 255, 255, 255});
+        // Draw turn indicator
+        string turnText = game->getUserTurn() ? "YOUR TURN" : "COMPUTER'S TURN";
+        SDL_Color turnColor = game->getUserTurn() ? SDL_Color{100, 255, 100, 255} : SDL_Color{255, 100, 100, 255};
+        renderText(turnText, 20, 20, turnColor);
         
-        // Draw moves
-        string movesText = "Moves: " + to_string(game->getMoves());
-        renderText(movesText, 20, 50, {255, 255, 255, 255});
+        // Draw user score
+        string userScoreText = "User Score: " + to_string(game->getUserScore());
+        renderText(userScoreText, 20, 50, {100, 200, 255, 255});
+        
+        // Draw computer score
+        string computerScoreText = "Computer Score: " + to_string(game->getComputerScore());
+        renderText(computerScoreText, 20, 80, {255, 150, 100, 255});
+        
+        // Draw total moves
+        string movesText = "Total Moves: " + to_string(game->getMoves());
+        renderText(movesText, 300, 50, {200, 200, 200, 255});
         
         // Draw cluster size if hovering
         if (!hoveredCluster.empty() && hoveredCluster.size() >= 2) {
@@ -115,8 +128,17 @@ private:
         
         // Draw game over message
         if (gameOver) {
-            string message = gameWon ? "You Won! No moves left." : "Game Over! No valid moves.";
-            renderText(message, WINDOW_WIDTH / 2 - 150, WINDOW_HEIGHT - 50, {255, 100, 100, 255}, true);
+            string message;
+            if (gameWon) {
+                message = "All tiles cleared!";
+            } else if (game->getUserScore() > game->getComputerScore()) {
+                message = "USER WINS! " + to_string(game->getUserScore()) + " - " + to_string(game->getComputerScore());
+            } else if (game->getComputerScore() > game->getUserScore()) {
+                message = "COMPUTER WINS! " + to_string(game->getComputerScore()) + " - " + to_string(game->getUserScore());
+            } else {
+                message = "TIE GAME! " + to_string(game->getUserScore()) + " - " + to_string(game->getComputerScore());
+            }
+            renderText(message, WINDOW_WIDTH / 2 - 200, WINDOW_HEIGHT - 50, {255, 100, 100, 255}, true);
             renderText("Press R to Restart", WINDOW_WIDTH / 2 - 100, WINDOW_HEIGHT - 20, {200, 200, 200, 255}, true);
         }
     }
@@ -154,7 +176,7 @@ public:
     SameGameGUI(SameGame* gameInstance) : 
         window(nullptr), renderer(nullptr), font(nullptr),
         game(gameInstance), hoveredRow(-1), hoveredCol(-1),
-        gameOver(false), gameWon(false) {}
+        gameOver(false), gameWon(false), lastComputerMoveTime(0) {}
     
     ~SameGameGUI() {
         cleanup();
@@ -229,7 +251,7 @@ public:
     }
     
     void handleMouseClick(int mouseX, int mouseY) {
-        if (gameOver) return;
+        if (gameOver || !game->getUserTurn()) return;  // Only allow clicks on user's turn
         
         pair<int, int> pos = screenToGrid(mouseX, mouseY);
         int row = pos.first;
@@ -266,6 +288,31 @@ public:
         gameOver = false;
         gameWon = false;
         hoveredCluster.clear();
+        lastComputerMoveTime = SDL_GetTicks();
+    }
+    
+    void executeComputerMove() {
+        if (gameOver || game->getUserTurn()) return;
+        
+        // Get the best move using greedy algorithm
+        pair<int, int> bestMove = game->getBestMove();
+        
+        if (bestMove.first != -1 && bestMove.second != -1) {
+            // Execute the move
+            game->removeCluster(bestMove.first, bestMove.second);
+            
+            // Check if game is over
+            if (!game->hasMovesLeft()) {
+                gameOver = true;
+                int activeTiles = 0;
+                for (int i = 0; i < game->getRows(); i++) {
+                    for (int j = 0; j < game->getCols(); j++) {
+                        if (game->isTileActive(i, j)) activeTiles++;
+                    }
+                }
+                gameWon = (activeTiles == 0);
+            }
+        }
     }
     
     void render() {
@@ -301,6 +348,15 @@ public:
                     } else if (e.key.keysym.sym == SDLK_ESCAPE) {
                         quit = true;
                     }
+                }
+            }
+            
+            // Execute computer move if it's computer's turn and enough time has passed
+            if (!gameOver && !game->getUserTurn()) {
+                Uint32 currentTime = SDL_GetTicks();
+                if (currentTime - lastComputerMoveTime >= COMPUTER_MOVE_DELAY) {
+                    executeComputerMove();
+                    lastComputerMoveTime = currentTime;
                 }
             }
             
