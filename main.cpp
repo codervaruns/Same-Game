@@ -7,8 +7,24 @@
 
 using namespace std;
 
-const int WINDOW_WIDTH = 600;
-const int WINDOW_HEIGHT = 550;
+// Function to generate random grid
+vector<vector<char>> generateRandomGrid(int rows, int cols) {
+    vector<vector<char>> grid(rows, vector<char>(cols));
+    vector<char> colors = {'G', 'W', 'R', 'B', 'Y'};  // Green, White, Red, Blue, Yellow
+    
+    srand(time(0));
+    
+    for (int i = 0; i < rows; i++) {
+        for (int j = 0; j < cols; j++) {
+            grid[i][j] = colors[rand() % colors.size()];
+        }
+    }
+    
+    return grid;
+}
+
+const int WINDOW_WIDTH = 750;
+const int WINDOW_HEIGHT = 650;
 const int TILE_SIZE = 80;
 const int GRID_OFFSET_X = 80;
 const int GRID_OFFSET_Y = 140;
@@ -284,11 +300,7 @@ public:
     }
     
     void handleRestart() {
-        vector<vector<char>> initialGrid = {
-            {'G', 'G', 'W', 'R'},
-            {'G', 'W', 'W', 'R'},
-            {'W', 'W', 'W', 'R'}
-        };
+        vector<vector<char>> initialGrid = generateRandomGrid(6, 8);
         game->reset(initialGrid);
         gameOver = false;
         gameWon = false;
@@ -372,12 +384,8 @@ public:
 };
 
 int main(int argc, char* argv[]) {
-    // Initialize game with default grid
-    vector<vector<char>> initialGrid = {
-        {'G', 'G', 'W', 'R'},
-        {'G', 'W', 'W', 'R'},
-        {'W', 'W', 'W', 'R'}
-    };
+    // Initialize game with random grid
+    vector<vector<char>> initialGrid = generateRandomGrid(6, 8);
     
     SameGame game(initialGrid);
     SameGameGUI gui(&game);
