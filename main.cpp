@@ -32,7 +32,7 @@ private:
     
     // Computer AI timing
     Uint32 lastComputerMoveTime;
-    const Uint32 COMPUTER_MOVE_DELAY = 1000;  // 1 second delay for computer move
+    const Uint32 COMPUTER_MOVE_DELAY = 2000;  // 2 second delay for computer move
     
     // Colors
     SDL_Color getColorForTile(char tile) {
@@ -124,6 +124,11 @@ private:
             int points = (clusterSize - 2) * (clusterSize - 2);
             string clusterText = "Cluster: " + to_string(clusterSize) + " tiles (" + to_string(points) + " pts)";
             renderText(clusterText, 250, 20, {255, 255, 0, 255});
+        }
+        
+        // Show "Thinking..." when computer is about to move
+        if (!gameOver && !game->getUserTurn()) {
+            renderText("Thinking...", 250, 50, {255, 200, 100, 255});
         }
         
         // Draw game over message
