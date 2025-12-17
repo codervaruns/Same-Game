@@ -48,7 +48,7 @@ private:
     
     // Computer AI timing
     Uint32 lastComputerMoveTime;
-    const Uint32 COMPUTER_MOVE_DELAY = 2000;  // 2 second delay for computer move
+    const Uint32 COMPUTER_MOVE_DELAY = 3000;  // 3 second delay for computer move
     
     // Colors
     SDL_Color getColorForTile(char tile) {
