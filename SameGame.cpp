@@ -5,11 +5,69 @@ SameGame::SameGame(const vector<vector<char>>& initialGrid) {
     reset(initialGrid);
 }
 
+void SameGame::buildGraph(const vector<vector<char>>& initialGrid) {
+    nodes.clear();
+    posToNodeIndex.clear();
+    
+    rows = initialGrid.size();
+    cols = rows > 0 ? initialGrid[0].size() : 0;
+    
+    // Create nodes for each tile
+    int index = 0;
+    for (int i = 0; i < rows; i++) {
+        for (int j = 0; j < cols; j++) {
+            nodes.push_back(Node(i, j, initialGrid[i][j]));
+            posToNodeIndex[i][j] = index;
+            index++;
+        }
+    }
+    
+    // Build adjacency relationships
+    updateNeighbors();
+}
+
+void SameGame::updateNeighbors() {
+    // Clear all neighbor lists
+    for (auto& node : nodes) {
+        node.neighbors.clear();
+    }
+    
+    // Rebuild neighbors based on current positions
+    vector<vector<int>> directions = {{-1, 0}, {0, 1}, {1, 0}, {0, -1}};
+    
+    for (auto& node : nodes) {
+        if (!node.active) continue;
+        
+        int row = node.row;
+        int col = node.col;
+        
+        for (const auto& dir : directions) {
+            int newRow = row + dir[0];
+            int newCol = col + dir[1];
+            
+            if (newRow >= 0 && newRow < rows && newCol >= 0 && newCol < cols) {
+                int neighborIdx = getNodeIndex(newRow, newCol);
+                if (neighborIdx != -1 && nodes[neighborIdx].active) {
+                    node.neighbors.push_back(neighborIdx);
+                }
+            }
+        }
+    }
+}
+
+int SameGame::getNodeIndex(int row, int col) const {
+    auto rowIt = posToNodeIndex.find(row);
+    if (rowIt != posToNodeIndex.end()) {
+        auto colIt = rowIt->second.find(col);
+        if (colIt != rowIt->second.end()) {
+            return colIt->second;
+        }
+    }
+    return -1;
+}
+
 void SameGame::reset(const vector<vector<char>>& initialGrid) {
-    grid = initialGrid;
-    rows = grid.size();
-    cols = rows > 0 ? grid[0].size() : 0;
-    active = vector<vector<bool>>(rows, vector<bool>(cols, true));
+    buildGraph(initialGrid);
     score = 0;
     moves = 0;
     isUserTurn = true;  // User goes first
@@ -18,15 +76,17 @@ void SameGame::reset(const vector<vector<char>>& initialGrid) {
 }
 
 char SameGame::getTile(int row, int col) const {
-    if (row >= 0 && row < rows && col >= 0 && col < cols) {
-        return grid[row][col];
+    int nodeIdx = getNodeIndex(row, col);
+    if (nodeIdx != -1) {
+        return nodes[nodeIdx].color;
     }
     return '\0';
 }
 
 bool SameGame::isTileActive(int row, int col) const {
-    if (row >= 0 && row < rows && col >= 0 && col < cols) {
-        return active[row][col];
+    int nodeIdx = getNodeIndex(row, col);
+    if (nodeIdx != -1) {
+        return nodes[nodeIdx].active;
     }
     return false;
 }
@@ -34,37 +94,40 @@ bool SameGame::isTileActive(int row, int col) const {
 vector<pair<int, int>> SameGame::detectClusterBFS(int startRow, int startCol) {
     vector<pair<int, int>> cluster;
     
-    if (!isTileActive(startRow, startCol)) {
+    int startNodeIdx = getNodeIndex(startRow, startCol);
+    if (startNodeIdx == -1 || !nodes[startNodeIdx].active) {
         return cluster;
     }
     
-    char color = grid[startRow][startCol];
-    vector<vector<bool>> visited(rows, vector<bool>(cols, false));
-    queue<pair<int, int>> q;
+    char color = nodes[startNodeIdx].color;
+    unordered_set<int> visited;
+    queue<int> q;
     
-    q.push({startRow, startCol});
-    visited[startRow][startCol] = true;
-    cluster.push_back({startRow, startCol});
+    q.push(startNodeIdx);
+    visited.insert(startNodeIdx);
+    cluster.push_back({nodes[startNodeIdx].row, nodes[startNodeIdx].col});
     
     vector<vector<int>> directions = {{-1, 0}, {0, 1}, {1, 0}, {0, -1}};
     
     while (!q.empty()) {
-        pair<int, int> current = q.front();
+        int currentIdx = q.front();
         q.pop();
-        int x = current.first;
-        int y = current.second;
+        
+        Node& currentNode = nodes[currentIdx];
+        int x = currentNode.row;
+        int y = currentNode.col;
         
         for (const auto& dir : directions) {
             int newX = x + dir[0];
             int newY = y + dir[1];
             
-            if (newX >= 0 && newX < rows && newY >= 0 && newY < cols &&
-                !visited[newX][newY] && active[newX][newY] && 
-                grid[newX][newY] == color) {
+            int neighborIdx = getNodeIndex(newX, newY);
+            if (neighborIdx != -1 && visited.find(neighborIdx) == visited.end() &&
+                nodes[neighborIdx].active && nodes[neighborIdx].color == color) {
                 
-                visited[newX][newY] = true;
-                q.push({newX, newY});
-                cluster.push_back({newX, newY});
+                visited.insert(neighborIdx);
+                q.push(neighborIdx);
+                cluster.push_back({nodes[neighborIdx].row, nodes[neighborIdx].col});
             }
         }
     }
@@ -90,7 +153,10 @@ bool SameGame::removeCluster(int row, int col) {
     
     // Remove tiles in cluster
     for (const auto& tile : cluster) {
-        active[tile.first][tile.second] = false;
+        int nodeIdx = getNodeIndex(tile.first, tile.second);
+        if (nodeIdx != -1) {
+            nodes[nodeIdx].active = false;
+        }
     }
     
     // Calculate score: (size - 2)^2
@@ -121,11 +187,19 @@ void SameGame::applyGravity() {
     for (int j = 0; j < cols; j++) {
         int pos = rows - 1;
         for (int i = rows - 1; i >= 0; i--) {
-            if (active[i][j]) {
+            int nodeIdx = getNodeIndex(i, j);
+            if (nodeIdx != -1 && nodes[nodeIdx].active) {
                 if (i != pos) {
-                    grid[pos][j] = grid[i][j];
-                    active[pos][j] = true;
-                    active[i][j] = false;
+                    // Move node to new position
+                    Node& node = nodes[nodeIdx];
+                    
+                    // Update position mapping
+                    posToNodeIndex[i].erase(j);
+                    posToNodeIndex[pos][j] = nodeIdx;
+                    
+                    // Update node position
+                    node.row = pos;
+                    node.col = j;
                 }
                 pos--;
             }
@@ -137,7 +211,8 @@ void SameGame::applyGravity() {
     for (int j = 0; j < cols; j++) {
         bool hasTiles = false;
         for (int i = 0; i < rows; i++) {
-            if (active[i][j]) {
+            int nodeIdx = getNodeIndex(i, j);
+            if (nodeIdx != -1 && nodes[nodeIdx].active) {
                 hasTiles = true;
                 break;
             }
@@ -146,24 +221,33 @@ void SameGame::applyGravity() {
         if (hasTiles) {
             if (j != col) {
                 for (int i = 0; i < rows; i++) {
-                    grid[i][col] = grid[i][j];
-                    active[i][col] = active[i][j];
-                    active[i][j] = false;
+                    int nodeIdx = getNodeIndex(i, j);
+                    if (nodeIdx != -1) {
+                        Node& node = nodes[nodeIdx];
+                        
+                        // Update position mapping
+                        posToNodeIndex[i].erase(j);
+                        posToNodeIndex[i][col] = nodeIdx;
+                        
+                        // Update node position
+                        node.col = col;
+                    }
                 }
             }
             col++;
         }
     }
+    
+    // Update neighbor relationships after gravity
+    updateNeighbors();
 }
 
 bool SameGame::hasMovesLeft() {
-    for (int i = 0; i < rows; i++) {
-        for (int j = 0; j < cols; j++) {
-            if (active[i][j]) {
-                int clusterSize = getClusterSize(i, j);
-                if (clusterSize >= 2) {
-                    return true;
-                }
+    for (const auto& node : nodes) {
+        if (node.active) {
+            int clusterSize = getClusterSize(node.row, node.col);
+            if (clusterSize >= 2) {
+                return true;
             }
         }
     }
@@ -172,21 +256,25 @@ bool SameGame::hasMovesLeft() {
 
 vector<tuple<int, char, int, int>> SameGame::getAllClusters() {
     vector<tuple<int, char, int, int>> clusters;
-    vector<vector<bool>> visited(rows, vector<bool>(cols, false));
+    unordered_set<int> visited;
     
-    for (int i = 0; i < rows; i++) {
-        for (int j = 0; j < cols; j++) {
-            if (active[i][j] && !visited[i][j]) {
-                vector<pair<int, int>> cluster = detectClusterBFS(i, j);
+    for (const auto& node : nodes) {
+        if (node.active) {
+            int nodeIdx = getNodeIndex(node.row, node.col);
+            if (nodeIdx != -1 && visited.find(nodeIdx) == visited.end()) {
+                vector<pair<int, int>> cluster = detectClusterBFS(node.row, node.col);
                 
                 // Mark all tiles in cluster as visited
                 for (const auto& tile : cluster) {
-                    visited[tile.first][tile.second] = true;
+                    int idx = getNodeIndex(tile.first, tile.second);
+                    if (idx != -1) {
+                        visited.insert(idx);
+                    }
                 }
                 
                 // Only include clusters of size >= 2
                 if (cluster.size() >= 2) {
-                    clusters.push_back({cluster.size(), grid[i][j], i, j});
+                    clusters.push_back({cluster.size(), node.color, node.row, node.col});
                 }
             }
         }

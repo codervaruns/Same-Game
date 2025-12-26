@@ -5,13 +5,26 @@
 #include <queue>
 #include <tuple>
 #include <utility>
+#include <unordered_map>
+#include <unordered_set>
 
 using namespace std;
 
+// Node structure for graph representation
+struct Node {
+    int row;
+    int col;
+    char color;
+    bool active;
+    vector<int> neighbors;  // indices of adjacent nodes
+    
+    Node(int r, int c, char clr) : row(r), col(c), color(clr), active(true) {}
+};
+
 class SameGame {
 private:
-    vector<vector<char>> grid;
-    vector<vector<bool>> active;  // true = tile exists, false = removed
+    vector<Node> nodes;  // Graph nodes
+    unordered_map<int, unordered_map<int, int>> posToNodeIndex;  // maps (row, col) to node index
     int rows;
     int cols;
     int score;
@@ -25,6 +38,9 @@ private:
     // Helper functions
     vector<pair<int, int>> detectClusterBFS(int startRow, int startCol);
     void applyGravity();
+    void buildGraph(const vector<vector<char>>& initialGrid);
+    int getNodeIndex(int row, int col) const;
+    void updateNeighbors();
     
 public:
     // Constructor

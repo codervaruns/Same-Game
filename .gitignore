@@ -3,6 +3,9 @@
 *.out
 *.app
 
+# Test executables
+test_graph
+
 # Build directories
 build/
 output/
