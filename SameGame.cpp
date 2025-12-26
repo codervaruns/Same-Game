@@ -258,24 +258,22 @@ vector<tuple<int, char, int, int>> SameGame::getAllClusters() {
     vector<tuple<int, char, int, int>> clusters;
     unordered_set<int> visited;
     
-    for (const auto& node : nodes) {
-        if (node.active) {
-            int nodeIdx = getNodeIndex(node.row, node.col);
-            if (nodeIdx != -1 && visited.find(nodeIdx) == visited.end()) {
-                vector<pair<int, int>> cluster = detectClusterBFS(node.row, node.col);
-                
-                // Mark all tiles in cluster as visited
-                for (const auto& tile : cluster) {
-                    int idx = getNodeIndex(tile.first, tile.second);
-                    if (idx != -1) {
-                        visited.insert(idx);
-                    }
+    for (int nodeIdx = 0; nodeIdx < nodes.size(); nodeIdx++) {
+        const auto& node = nodes[nodeIdx];
+        if (node.active && visited.find(nodeIdx) == visited.end()) {
+            vector<pair<int, int>> cluster = detectClusterBFS(node.row, node.col);
+            
+            // Mark all tiles in cluster as visited
+            for (const auto& tile : cluster) {
+                int idx = getNodeIndex(tile.first, tile.second);
+                if (idx != -1) {
+                    visited.insert(idx);
                 }
-                
-                // Only include clusters of size >= 2
-                if (cluster.size() >= 2) {
-                    clusters.push_back({cluster.size(), node.color, node.row, node.col});
-                }
+            }
+            
+            // Only include clusters of size >= 2
+            if (cluster.size() >= 2) {
+                clusters.push_back({cluster.size(), node.color, node.row, node.col});
             }
         }
     }
