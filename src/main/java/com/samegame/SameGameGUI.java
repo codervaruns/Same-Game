@@ -42,8 +42,9 @@ public class SameGameGUI extends JFrame {
         gamePanel = new GamePanel();
         add(gamePanel);
         
-        // Setup key listeners
-        addKeyListener(new KeyAdapter() {
+        // Setup key listeners on the panel (which can receive focus)
+        gamePanel.setFocusable(true);
+        gamePanel.addKeyListener(new KeyAdapter() {
             @Override
             public void keyPressed(KeyEvent e) {
                 if (e.getKeyCode() == KeyEvent.VK_R) {
@@ -53,6 +54,7 @@ public class SameGameGUI extends JFrame {
                 }
             }
         });
+        gamePanel.requestFocusInWindow();
         
         // Setup game timer for computer moves
         gameTimer = new Timer(16, e -> {
