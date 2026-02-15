@@ -311,7 +311,7 @@ public:
     void executeComputerMove() {
         if (gameOver || game->getUserTurn()) return;
         
-        // Get the best move using greedy algorithm
+        // Get the best move using D&C + DP algorithm
         pair<int, int> bestMove = game->getBestMove();
         
         if (bestMove.first != -1 && bestMove.second != -1) {

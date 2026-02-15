@@ -7,6 +7,7 @@
 #include <utility>
 #include <unordered_map>
 #include <unordered_set>
+#include <string>
 
 using namespace std;
 
@@ -42,6 +43,25 @@ private:
     int getNodeIndex(int row, int col) const;
     void updateNeighbors();
     
+    // D&C: find clusters by recursively splitting column range
+    vector<tuple<int, char, int, int>> findClustersDnC(int colLeft, int colRight);
+    
+    // DP: evaluate board state with memoized lookahead
+    unordered_map<string, int> dpMemo;
+    string boardStateKey();
+    int dpEvaluate(int depth);
+    
+    // Snapshot/restore helpers for simulation
+    struct BoardSnapshot {
+        vector<Node> nodes;
+        unordered_map<int, unordered_map<int, int>> posToNodeIndex;
+        int score, moves;
+        bool isUserTurn;
+        int userScore, computerScore;
+    };
+    BoardSnapshot saveState();
+    void restoreState(const BoardSnapshot& snap);
+    
 public:
     // Constructor
     SameGame(const vector<vector<char>>& initialGrid);
@@ -68,8 +88,8 @@ public:
     // Get all available clusters
     vector<tuple<int, char, int, int>> getAllClusters();
     
-    // Computer AI - greedy algorithm
-    pair<int, int> getBestMove();  // Returns {row, col} of best move, or {-1, -1} if no moves
+    // Computer AI - Divide & Conquer + DP + Sorting
+    pair<int, int> getBestMove();
 };
 
 #endif
