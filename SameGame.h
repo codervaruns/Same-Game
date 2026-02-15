@@ -25,7 +25,7 @@ struct Node {
 class SameGame {
 private:
     vector<Node> nodes;  // Graph nodes
-    unordered_map<int, unordered_map<int, int>> posToNodeIndex;  // maps (row, col) to node index
+    vector<vector<int>> nodeGrid;  // maps (row, col) to node index for O(1) lookup
     int rows;
     int cols;
     int score;
@@ -44,6 +44,7 @@ private:
     void updateNeighbors();
     
     // D&C: find clusters by recursively splitting column range
+    // D&C: find clusters by recursively splitting column range
     vector<tuple<int, char, int, int>> findClustersDnC(int colLeft, int colRight);
     
     // DP: evaluate board state with memoized lookahead
@@ -54,7 +55,7 @@ private:
     // Snapshot/restore helpers for simulation
     struct BoardSnapshot {
         vector<Node> nodes;
-        unordered_map<int, unordered_map<int, int>> posToNodeIndex;
+        vector<vector<int>> nodeGrid;
         int score, moves;
         bool isUserTurn;
         int userScore, computerScore;
