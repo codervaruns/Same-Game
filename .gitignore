@@ -9,10 +9,16 @@ test_graph
 # Build directories
 build/
 output/
+target/
 
 # Object files
 *.o
 *.obj
+
+# Java compiled files
+*.class
+*.jar
+!pom.xml
 
 # Debug files
 *.dSYM/
