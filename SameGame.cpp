@@ -1,5 +1,6 @@
 #include "SameGame.h"
 #include <algorithm>
+#include <climits>
 
 SameGame::SameGame(const vector<vector<char>>& initialGrid) {
     reset(initialGrid);
@@ -13,7 +14,6 @@ void SameGame::buildGraph(const vector<vector<char>>& initialGrid) {
     
     nodeGrid.assign(rows, vector<int>(cols, -1));
     
-    // Create nodes for each tile
     int index = 0;
     for (int i = 0; i < rows; i++) {
         for (int j = 0; j < cols; j++) {
@@ -23,17 +23,14 @@ void SameGame::buildGraph(const vector<vector<char>>& initialGrid) {
         }
     }
     
-    // Build adjacency relationships
     updateNeighbors();
 }
 
 void SameGame::updateNeighbors() {
-    // Clear all neighbor lists
     for (auto& node : nodes) {
         node.neighbors.clear();
     }
     
-    // Rebuild neighbors based on current positions
     vector<vector<int>> directions = {{-1, 0}, {0, 1}, {1, 0}, {0, -1}};
     
     for (auto& node : nodes) {
@@ -67,7 +64,7 @@ void SameGame::reset(const vector<vector<char>>& initialGrid) {
     buildGraph(initialGrid);
     score = 0;
     moves = 0;
-    isUserTurn = true;  // User goes first
+    isUserTurn = true;
     userScore = 0;
     computerScore = 0;
     dpMemo.clear();
@@ -146,12 +143,10 @@ int SameGame::getClusterSize(int row, int col) {
 bool SameGame::removeCluster(int row, int col) {
     vector<pair<int, int>> cluster = detectClusterBFS(row, col);
     
-    // Only remove clusters of size 2 or more
     if (cluster.size() < 2) {
         return false;
     }
     
-    // Remove tiles in cluster
     for (const auto& tile : cluster) {
         int nodeIdx = getNodeIndex(tile.first, tile.second);
         if (nodeIdx != -1) {
@@ -159,12 +154,10 @@ bool SameGame::removeCluster(int row, int col) {
         }
     }
     
-    // Calculate score: (size - 2)^2
     int clusterSize = cluster.size();
     int points = (clusterSize - 2) * (clusterSize - 2);
     score += points;
     
-    // Add to appropriate player's score
     if (isUserTurn) {
         userScore += points;
     } else {
@@ -173,24 +166,20 @@ bool SameGame::removeCluster(int row, int col) {
     
     moves++;
     
-    // Switch turns after successful move
     switchTurn();
     
-    // Apply gravity
     applyGravity();
     
     return true;
 }
 
 void SameGame::applyGravity() {
-    // Vertical gravity: tiles fall down
     for (int j = 0; j < cols; j++) {
         int pos = rows - 1;
         for (int i = rows - 1; i >= 0; i--) {
             int nodeIdx = nodeGrid[i][j];
             if (nodeIdx != -1 && nodes[nodeIdx].active) {
                 if (i != pos) {
-                    // Move node to new position
                     nodeGrid[i][j] = -1;
                     nodeGrid[pos][j] = nodeIdx;
                     
@@ -202,7 +191,6 @@ void SameGame::applyGravity() {
         }
     }
     
-    // Horizontal gravity: empty columns shift left
     int col = 0;
     for (int j = 0; j < cols; j++) {
         bool hasTiles = false;
@@ -253,7 +241,6 @@ vector<tuple<int, char, int, int>> SameGame::getAllClusters() {
         if (node.active && visited.find(nodeIdx) == visited.end()) {
             vector<pair<int, int>> cluster = detectClusterBFS(node.row, node.col);
             
-            // Mark all tiles in cluster as visited
             for (const auto& tile : cluster) {
                 int idx = getNodeIndex(tile.first, tile.second);
                 if (idx != -1) {
@@ -261,7 +248,6 @@ vector<tuple<int, char, int, int>> SameGame::getAllClusters() {
                 }
             }
             
-            // Only include clusters of size >= 2
             if (cluster.size() >= 2) {
                 clusters.push_back({(int)cluster.size(), node.color, node.row, node.col});
             }
@@ -270,10 +256,6 @@ vector<tuple<int, char, int, int>> SameGame::getAllClusters() {
     
     return clusters;
 }
-
-// ============================================================
-//  SNAPSHOT / RESTORE — used by DP to simulate moves
-// ============================================================
 
 SameGame::BoardSnapshot SameGame::saveState() {
     BoardSnapshot snap;
@@ -299,14 +281,14 @@ void SameGame::restoreState(const BoardSnapshot& snap) {
 
 
 
-// ============================================================
-//  DP — Minimax (Negamax) with lookahead
-// ============================================================
-
 string SameGame::boardStateKey() {
     string key;
-    key.reserve(rows * cols + 1);
-    key += (isUserTurn ? 'U' : 'C'); // Include turn in key
+    key.reserve(rows * cols + 10);
+    key += (isUserTurn ? 'U' : 'C');
+    
+    int scoreDiff = computerScore - userScore;
+    key += to_string(scoreDiff) + "|";
+    
     for (int i = 0; i < rows; i++) {
         for (int j = 0; j < cols; j++) {
             int idx = nodeGrid[i][j];
@@ -320,10 +302,45 @@ string SameGame::boardStateKey() {
     return key;
 }
 
+int SameGame::getMoveHeuristic(int clusterSize, int row, int col, char color) {
+    int score = 0;
+    
+    score += (clusterSize - 2) * (clusterSize - 2) * 10;
+    
+    score += (rows - row) * 2;
+    
+    int centerDist = abs(col - cols / 2);
+    score += (cols - centerDist);
+    
+    int cascadePotential = 0;
+    vector<vector<int>> directions = {{-1, 0}, {0, 1}, {1, 0}, {0, -1}};
+    for (const auto& dir : directions) {
+        int newRow = row + dir[0];
+        int newCol = col + dir[1];
+        if (newRow >= 0 && newRow < rows && newCol >= 0 && newCol < cols) {
+            int idx = nodeGrid[newRow][newCol];
+            if (idx != -1 && nodes[idx].active && nodes[idx].color != color) {
+                cascadePotential++;
+            }
+        }
+    }
+    score += cascadePotential * 3;
+    
+    return score;
+}
+
 int SameGame::dpEvaluate(int depth) {
-    // Return relative score: (ActivePlayerScore - OpponentScore)
-    if (depth <= 0 || !hasMovesLeft()) {
-        return computerScore - userScore;
+    if (!hasMovesLeft()) {
+        int activeTiles = 0;
+        for (const auto& node : nodes) {
+            if (node.active) activeTiles++;
+        }
+        int clearBonus = (activeTiles == 0) ? 1000 : -activeTiles * 5;
+        return computerScore - userScore + clearBonus;
+    }
+    
+    if (depth <= 0) {
+        return evaluatePosition();
     }
     
     string key = boardStateKey();
@@ -332,59 +349,110 @@ int SameGame::dpEvaluate(int depth) {
     
     vector<tuple<int, char, int, int>> clusters = getAllClusters();
     
-    // Pruning: top N moves
-    sort(clusters.begin(), clusters.end(), [](const auto& a, const auto& b) {
-        return get<0>(a) > get<0>(b);
-    });
+    vector<pair<int, int>> moveScores;
+    for (int i = 0; i < (int)clusters.size(); i++) {
+        int h = getMoveHeuristic(get<0>(clusters[i]), get<2>(clusters[i]), 
+                                  get<3>(clusters[i]), get<1>(clusters[i]));
+        moveScores.push_back({h, i});
+    }
+    sort(moveScores.begin(), moveScores.end(), greater<pair<int, int>>());
     
-    int bestVal = isUserTurn ? 1e9 : -1e9;
-    int limit = min((int)clusters.size(), 3);
-
-    for (int i = 0; i < limit; i++) {
+    int bestVal = isUserTurn ? INT_MAX : INT_MIN;
+    
+    for (const auto& [heuristic, idx] : moveScores) {
         BoardSnapshot snap = saveState();
-        removeCluster(get<2>(clusters[i]), get<3>(clusters[i]));
+        removeCluster(get<2>(clusters[idx]), get<3>(clusters[idx]));
         
         int val = dpEvaluate(depth - 1);
         
         if (snap.isUserTurn) {
-            if (val < bestVal) bestVal = val; // User minimizes Computer - User
+            bestVal = min(bestVal, val);
         } else {
-            if (val > bestVal) bestVal = val; // Computer maximizes Computer - User
+            bestVal = max(bestVal, val);
         }
         
         restoreState(snap);
     }
     
-    return dpMemo[key] = bestVal;
+    dpMemo[key] = bestVal;
+    return bestVal;
 }
 
-// ============================================================
-//  getBestMove — Improved Minimax Search
-// ============================================================
+int SameGame::evaluatePosition() {
+    int eval = computerScore - userScore;
+    
+    int activeTiles = 0;
+    unordered_map<char, int> colorCount;
+    
+    for (const auto& node : nodes) {
+        if (node.active) {
+            activeTiles++;
+            colorCount[node.color]++;
+        }
+    }
+    
+    for (const auto& node : nodes) {
+        if (node.active) {
+            bool hasNeighbor = false;
+            for (int neighborIdx : node.neighbors) {
+                if (nodes[neighborIdx].active && 
+                    nodes[neighborIdx].color == node.color) {
+                    hasNeighbor = true;
+                    break;
+                }
+            }
+            if (!hasNeighbor) eval -= 3;
+        }
+    }
+    
+    vector<tuple<int, char, int, int>> clusters = getAllClusters();
+    for (const auto& [size, color, r, c] : clusters) {
+        eval += (size - 2) * (size - 2);
+    }
+    
+    return eval;
+}
 
 pair<int, int> SameGame::getBestMove() {
     dpMemo.clear();
     vector<tuple<int, char, int, int>> clusters = getAllClusters();
     if (clusters.empty()) return {-1, -1};
     
-    sort(clusters.begin(), clusters.end(), [](const auto& a, const auto& b) {
-        return get<0>(a) > get<0>(b);
-    });
-
-    int bestScore = -1e9;
-    pair<int, int> bestMove = {-1, -1};
-    int lookDepth = 3; // Increased depth
+    int lookDepth;
+    int numClusters = clusters.size();
+    if (numClusters <= 4) {
+        lookDepth = 6;
+    } else if (numClusters <= 8) {
+        lookDepth = 4;
+    } else {
+        lookDepth = 3;
+    }
     
-    int limit = min((int)clusters.size(), 6);
-    for (int i = 0; i < limit; i++) {
+    vector<pair<int, int>> moveScores;
+    for (int i = 0; i < (int)clusters.size(); i++) {
+        int h = getMoveHeuristic(get<0>(clusters[i]), get<2>(clusters[i]), 
+                                  get<3>(clusters[i]), get<1>(clusters[i]));
+        moveScores.push_back({h, i});
+    }
+    sort(moveScores.begin(), moveScores.end(), greater<pair<int, int>>());
+    
+    int bestScore = INT_MIN;
+    pair<int, int> bestMove = {-1, -1};
+    
+    for (const auto& [heuristic, idx] : moveScores) {
         BoardSnapshot snap = saveState();
-        removeCluster(get<2>(clusters[i]), get<3>(clusters[i]));
+        int clusterRow = get<2>(clusters[idx]);
+        int clusterCol = get<3>(clusters[idx]);
+        int clusterSize = get<0>(clusters[idx]);
+        
+        removeCluster(clusterRow, clusterCol);
         
         int score = dpEvaluate(lookDepth);
         
-        if (score > bestScore) {
+        if (score > bestScore || 
+            (score == bestScore && clusterSize > get<0>(clusters[moveScores[0].second]))) {
             bestScore = score;
-            bestMove = {get<2>(clusters[i]), get<3>(clusters[i])};
+            bestMove = {clusterRow, clusterCol};
         }
         
         restoreState(snap);
