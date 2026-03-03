@@ -42,10 +42,7 @@ private:
     void buildGraph(const vector<vector<char>>& initialGrid);
     int getNodeIndex(int row, int col) const;
     void updateNeighbors();
-    
-    // D&C: find clusters by recursively splitting column range
-    // D&C: find clusters by recursively splitting column range
-    vector<tuple<int, char, int, int>> findClustersDnC(int colLeft, int colRight);
+
     
     // DP: evaluate board state with memoized lookahead
     unordered_map<string, int> dpMemo;
@@ -66,8 +63,6 @@ private:
 public:
     // Constructor
     SameGame(const vector<vector<char>>& initialGrid);
-    
-    // Game state queries
     int getRows() const { return rows; }
     int getCols() const { return cols; }
     int getScore() const { return score; }
@@ -89,7 +84,7 @@ public:
     // Get all available clusters
     vector<tuple<int, char, int, int>> getAllClusters();
     
-    // Computer AI - Divide & Conquer + DP + Sorting
+    // Computer AI - DP + Sorting
     pair<int, int> getBestMove();
 };
 

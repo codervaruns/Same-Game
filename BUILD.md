@@ -35,4 +35,3 @@ g++ -std=c++17 -I. SameGame.cpp main.cpp -o SameGame.exe -lmingw32 -lSDL2main -l
 - `SameGame.h` - Game logic class header
 - `SameGame.cpp` - Game logic implementation
 - `main.cpp` - SDL2 GUI implementation
-- `greedy.cpp` - Original console version (deprecated)
