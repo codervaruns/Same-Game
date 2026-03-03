@@ -8,6 +8,7 @@
 #include <unordered_map>
 #include <unordered_set>
 #include <string>
+#include <climits>
 
 using namespace std;
 
@@ -19,6 +20,13 @@ struct Node {
     vector<int> neighbors;
     
     Node(int r, int c, char clr) : row(r), col(c), color(clr), active(true) {}
+};
+
+// Transposition table entry with alpha-beta bounds
+struct TTEntry {
+    int value;
+    int depth;
+    int flag; // 0 = exact, 1 = lower bound, 2 = upper bound
 };
 
 class SameGame {
@@ -40,11 +48,19 @@ private:
     int getNodeIndex(int row, int col) const;
     void updateNeighbors();
 
-    unordered_map<string, int> dpMemo;
+    // --- AI Engine ---
+    unordered_map<string, TTEntry> transTable;
     string boardStateKey();
-    int dpEvaluate(int depth);
-    int evaluatePosition();
-    int getMoveHeuristic(int clusterSize, int row, int col, char color);
+    
+    // Alpha-beta minimax
+    int alphaBeta(int depth, int alpha, int beta);
+    
+    // Strategic evaluation
+    int evaluateStrategic();
+    int countColorAdjacencies();
+    
+    // Move ordering heuristic
+    int getSmartMoveHeuristic(int clusterSize, int row, int col, char color);
     
     struct BoardSnapshot {
         vector<Node> nodes;
